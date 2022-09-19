@@ -1,21 +1,13 @@
 import cv2
+import imutils
 import numpy as np
 
-def nothing(x):
-    # any operation
-    pass
+
 
 cap = cv2.VideoCapture(1)
+cap.set(3,640)
+cap.set(4.480)
 
-cv2.namedWindow("Trackbars")
-cv2.createTrackbar("L-H", "Trackbars", 0, 180, nothing)
-cv2.createTrackbar("L-S", "Trackbars", 66, 255, nothing)
-cv2.createTrackbar("L-V", "Trackbars", 134, 255, nothing)
-cv2.createTrackbar("U-H", "Trackbars", 180, 180, nothing)
-cv2.createTrackbar("U-S", "Trackbars", 255, 255, nothing)
-cv2.createTrackbar("U-V", "Trackbars", 243, 255, nothing)
-
-font = cv2.FONT_HERSHEY_COMPLEX
 
 while True:
     _, frame = cap.read()
@@ -32,35 +24,28 @@ while True:
     upper_red = np.array([u_h, u_s, u_v])
 
     mask = cv2.inRange(hsv, lower_red, upper_red)
-    kernel = np.ones((5, 5), np.uint8)
-    mask = cv2.erode(mask, kernel)
 
-    # Contours detection
-    if int(cv2.__version__[0]) > 3:
-        # Opencv 4.x.x
-        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    else:
-        # Opencv 3.x.x
-        _, contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    for cnt in contours:
-        area = cv2.contourArea(cnt)
-        approx = cv2.approxPolyDP(cnt, 0.02*cv2.arcLength(cnt, True), True)
-        x = approx.ravel()[0]
-        y = approx.ravel()[1]
-
-        if area > 400:
-            cv2.drawContours(frame, [approx], 0, (0, 0, 0), 5)
-
-            if len(approx) == 3:
-                cv2.putText(frame, "Triangle", (x, y), font, 1, (0, 0, 0))
-            elif len(approx) == 4:
-                cv2.putText(frame, "Rectangle", (x, y), font, 1, (0, 0, 0))
-            elif 10 < len(approx) < 20:
-                cv2.putText(frame, "Circle", (x, y), font, 1, (0, 0, 0))
-
+    cnts = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = imutils.grab_contours(cnts)
+    
+    for c in cnts:
+        area = cv2.contourArea(c)
+        cv2.drawContours(frame, [c], -1, (0,255,0),3)
+        
+        M = cv2.moments(c)
+        
+        cx = int(M["m10"/M["m00"]])
+        cy = int(M["m01"/M["m00"]])
+        
+        cv2.circle(frame, (cx,cy), 7, (255,255,255), -1)
+        cv2.putText(frame, "Centre", (cx-20, cy-20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
+        
+        
     cv2.imshow("Frame", frame)
     cv2.imshow("Mask", mask)
+    
+    print("area is....", area)
+    print("centroid is at...",cx,cy )
 
     key = cv2.waitKey(1)
     if key == 27:
